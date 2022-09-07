@@ -17,6 +17,7 @@ package spec
 import (
 	"encoding/json"
 
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/swag"
 )
 
@@ -41,6 +42,20 @@ func (c *ContactInfo) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return json.Unmarshal(data, &c.VendorExtensible)
+}
+
+func (c *ContactInfo) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	var x struct {
+		ContactInfoProps
+		Extensions
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+	x.Extensions.sanitize()
+	c.ContactInfoProps = x.ContactInfoProps
+	c.VendorExtensible.Extensions = x.Extensions
+	return nil
 }
 
 // MarshalJSON produces ContactInfo as json

@@ -17,6 +17,7 @@ package spec
 import (
 	"encoding/json"
 
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/swag"
 )
 
@@ -40,6 +41,20 @@ func (l *License) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return json.Unmarshal(data, &l.VendorExtensible)
+}
+
+func (l *License) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	var x struct {
+		LicenseProps
+		Extensions
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+	x.Extensions.sanitize()
+	l.LicenseProps = x.LicenseProps
+	l.VendorExtensible.Extensions = x.Extensions
+	return nil
 }
 
 // MarshalJSON produces License as json

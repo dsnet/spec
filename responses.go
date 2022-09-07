@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/dsnet/try"
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/swag"
 )
 
@@ -69,6 +71,51 @@ func (r *Responses) UnmarshalJSON(data []byte) error {
 		r.ResponsesProps = ResponsesProps{}
 	}
 	return nil
+}
+
+func (r *Responses) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) (err error) {
+	defer try.Handle(&err)
+	tok := try.E1(dec.ReadToken())
+	var ext any
+	var resp Response
+	switch k := tok.Kind(); k {
+	case 'n':
+		return nil // noop
+	case '{':
+		for dec.PeekKind() != '}' {
+			tok := try.E1(dec.ReadToken())
+			switch k := tok.String(); {
+			case isExtensionKey(k):
+				ext = nil
+				try.E(opts.UnmarshalNext(dec, &ext))
+
+				if r.Extensions == nil {
+					r.Extensions = make(map[string]any)
+				}
+				r.Extensions[k] = ext
+			case k == "default":
+				resp = Response{}
+				try.E(opts.UnmarshalNext(dec, &resp))
+
+				respCopy := resp
+				r.ResponsesProps.Default = &respCopy
+			default:
+				if nk, err := strconv.Atoi(k); err == nil {
+					resp = Response{}
+					try.E(opts.UnmarshalNext(dec, &resp))
+
+					if r.StatusCodeResponses == nil {
+						r.StatusCodeResponses = map[int]Response{}
+					}
+					r.StatusCodeResponses[nk] = resp
+				}
+			}
+		}
+		try.E1(dec.ReadToken())
+		return nil
+	default:
+		return fmt.Errorf("unknown JSON kind: %v", k)
+	}
 }
 
 // MarshalJSON converts this items object to JSON

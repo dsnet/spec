@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/go-openapi/swag"
 )
@@ -67,6 +68,31 @@ func (e Extensions) GetStringSlice(key string) ([]string, bool) {
 		return strs, ok
 	}
 	return nil, false
+}
+
+func (e Extensions) sanitize() {
+	e.sanitizeMaybePreserveExtra(false)
+}
+func (e Extensions) sanitizeWithExtra() map[string]any {
+	return e.sanitizeMaybePreserveExtra(true)
+}
+func (e Extensions) sanitizeMaybePreserveExtra(preserveExtra bool) (extra map[string]any) {
+	for k := range e {
+		if !isExtensionKey(k) {
+			if preserveExtra {
+				if extra == nil {
+					extra = make(map[string]any)
+				}
+				extra[k] = e[k]
+			}
+			delete(e, k)
+		}
+	}
+	return extra
+}
+
+func isExtensionKey(k string) bool {
+	return len(k) > 1 && (k[0] == 'x' || k[0] == 'X') && k[1] == '-'
 }
 
 // VendorExtensible composition block.
@@ -162,4 +188,18 @@ func (i *Info) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return json.Unmarshal(data, &i.VendorExtensible)
+}
+
+func (i *Info) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	var x struct {
+		Extensions
+		InfoProps
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+	x.Extensions.sanitize()
+	i.VendorExtensible.Extensions = x.Extensions
+	i.InfoProps = x.InfoProps
+	return nil
 }

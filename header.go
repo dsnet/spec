@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/go-openapi/swag"
 )
@@ -176,6 +177,24 @@ func (h *Header) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return json.Unmarshal(data, &h.HeaderProps)
+}
+
+func (h *Header) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	var x struct {
+		CommonValidations
+		SimpleSchema
+		Extensions
+		HeaderProps
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+	x.Extensions.sanitize()
+	h.CommonValidations = x.CommonValidations
+	h.SimpleSchema = x.SimpleSchema
+	h.VendorExtensible.Extensions = x.Extensions
+	h.HeaderProps = x.HeaderProps
+	return nil
 }
 
 // JSONLookup look up a value by the json property name

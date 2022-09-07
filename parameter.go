@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/go-openapi/swag"
 )
@@ -298,6 +299,27 @@ func (p *Parameter) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return json.Unmarshal(data, &p.ParamProps)
+}
+
+func (p *Parameter) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	var x struct {
+		CommonValidations
+		SimpleSchema
+		Extensions
+		ParamProps
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+	if err := p.Refable.Ref.fromMap(x.Extensions); err != nil {
+		return err
+	}
+	x.Extensions.sanitize()
+	p.CommonValidations = x.CommonValidations
+	p.SimpleSchema = x.SimpleSchema
+	p.VendorExtensible.Extensions = x.Extensions
+	p.ParamProps = x.ParamProps
+	return nil
 }
 
 // MarshalJSON converts this items object to JSON

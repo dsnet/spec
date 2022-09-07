@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"sort"
 
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/go-openapi/swag"
 )
@@ -118,6 +119,21 @@ func (o *Operation) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return json.Unmarshal(data, &o.VendorExtensible)
+}
+
+func (o *Operation) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	type OperationPropsNoMethods OperationProps // strip MarshalJSON method
+	var x struct {
+		Extensions
+		OperationPropsNoMethods
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+	x.Extensions.sanitize()
+	o.VendorExtensible.Extensions = x.Extensions
+	o.OperationProps = OperationProps(x.OperationPropsNoMethods)
+	return nil
 }
 
 // MarshalJSON converts this items object to JSON

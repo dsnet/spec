@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/go-openapi/swag"
 )
@@ -641,5 +642,33 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 
 	*s = sch
 
+	return nil
+}
+
+func (s *Schema) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	var x struct {
+		Extensions
+		SchemaProps
+		SwaggerSchemaProps
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+
+	_ = x.Ref.fromMap(x.Extensions)
+	_ = x.Schema.fromMap(x.Extensions)
+	delete(x.Extensions, "$ref")
+	delete(x.Extensions, "$schema")
+	for _, pn := range swag.DefaultJSONNameProvider.GetJSONNames(s) {
+		delete(x.Extensions, pn)
+	}
+	if len(x.Extensions) == 0 {
+		x.Extensions = nil
+	}
+
+	s.ExtraProps = x.Extensions.sanitizeWithExtra()
+	s.VendorExtensible.Extensions = x.Extensions
+	s.SchemaProps = x.SchemaProps
+	s.SwaggerSchemaProps = x.SwaggerSchemaProps
 	return nil
 }

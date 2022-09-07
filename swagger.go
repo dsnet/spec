@@ -23,6 +23,8 @@ import (
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/go-openapi/swag"
+
+	jsonv2 "github.com/go-json-experiment/json"
 )
 
 // Swagger this is the root document object for the API specification.
@@ -67,6 +69,20 @@ func (s *Swagger) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*s = sw
+	return nil
+}
+
+func (s *Swagger) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	var x struct {
+		Extensions
+		SwaggerProps
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+	x.Extensions.sanitize()
+	s.VendorExtensible.Extensions = x.Extensions
+	s.SwaggerProps = x.SwaggerProps
 	return nil
 }
 
@@ -267,6 +283,18 @@ func (s *SchemaOrBool) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (s *SchemaOrBool) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	if dec.PeekKind() == '{' {
+		err := opts.UnmarshalNext(dec, &s.Schema)
+		s.Allows = true
+		return err
+	} else {
+		b, _ := dec.ReadValue()
+		s.Allows = string(b) != "false"
+		return nil
+	}
+}
+
 // SchemaOrStringArray represents a schema or a string array
 type SchemaOrStringArray struct {
 	Schema   *Schema
@@ -311,6 +339,18 @@ func (s *SchemaOrStringArray) UnmarshalJSON(data []byte) error {
 	}
 	*s = nw
 	return nil
+}
+
+func (s *SchemaOrStringArray) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	switch dec.PeekKind() {
+	case '{':
+		return opts.UnmarshalNext(dec, &s.Schema)
+	case '[':
+		return opts.UnmarshalNext(dec, &s.Property)
+	default:
+		_, err := dec.ReadValue()
+		return err
+	}
 }
 
 // Definitions contains the models explicitly defined in this spec
@@ -383,6 +423,22 @@ func (s *StringOrArray) UnmarshalJSON(data []byte) error {
 	}
 }
 
+func (s *StringOrArray) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	switch k := dec.PeekKind(); k {
+	case '[':
+		return opts.UnmarshalNext(dec, (*[]string)(s))
+	case '"':
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return err
+		}
+		*s = StringOrArray{tok.String()}
+		return nil
+	default:
+		return fmt.Errorf("only string or array is allowed, not %v", k)
+	}
+}
+
 // MarshalJSON converts this string or array to a JSON array or JSON string
 func (s StringOrArray) MarshalJSON() ([]byte, error) {
 	if len(s) == 1 {
@@ -443,6 +499,18 @@ func (s *SchemaOrArray) UnmarshalJSON(data []byte) error {
 	}
 	*s = nw
 	return nil
+}
+
+func (s *SchemaOrArray) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	switch dec.PeekKind() {
+	case '{':
+		return opts.UnmarshalNext(dec, &s.Schema)
+	case '[':
+		return opts.UnmarshalNext(dec, &s.Schemas)
+	default:
+		_, err := dec.ReadValue()
+		return err
+	}
 }
 
 // vim:set ft=go noet sts=2 sw=2 ts=2:

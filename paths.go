@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dsnet/try"
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/swag"
 )
 
@@ -71,6 +73,46 @@ func (p *Paths) UnmarshalJSON(data []byte) error {
 			}
 			p.Paths[k] = pi
 		}
+	}
+	return nil
+}
+
+func (p *Paths) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) (err error) {
+	defer try.Handle(&err)
+	tok := try.E1(dec.ReadToken())
+	var ext any
+	var pi PathItem
+	switch k := tok.Kind(); k {
+	case 'n':
+		return nil // noop
+	case '{':
+		for dec.PeekKind() != '}' {
+			tok := try.E1(dec.ReadToken())
+			switch k := tok.String(); {
+			case isExtensionKey(k):
+				ext = nil
+				try.E(opts.UnmarshalNext(dec, &ext))
+
+				if p.Extensions == nil {
+					p.Extensions = make(map[string]any)
+				}
+				p.Extensions[k] = ext
+			case len(k) > 0 && k[0] == '/':
+				pi = PathItem{}
+				try.E(opts.UnmarshalNext(dec, &pi))
+
+				if p.Paths == nil {
+					p.Paths = make(map[string]PathItem)
+				}
+				p.Paths[k] = pi
+			default:
+				try.E1(dec.ReadValue()) // skip value
+			}
+		}
+		try.E1(dec.ReadToken())
+		return nil
+	default:
+		return fmt.Errorf("unknown JSON kind: %v", k)
 	}
 	return nil
 }

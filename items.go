@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/go-openapi/swag"
 )
@@ -192,6 +193,25 @@ func (i *Items) UnmarshalJSON(data []byte) error {
 	i.CommonValidations = validations
 	i.SimpleSchema = simpleSchema
 	i.VendorExtensible = vendorExtensible
+	return nil
+}
+
+func (i *Items) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	var x struct {
+		CommonValidations
+		SimpleSchema
+		Extensions
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+	if err := i.Refable.Ref.fromMap(x.Extensions); err != nil {
+		return err
+	}
+	x.Extensions.sanitize()
+	i.CommonValidations = x.CommonValidations
+	i.SimpleSchema = x.SimpleSchema
+	i.VendorExtensible.Extensions = x.Extensions
 	return nil
 }
 

@@ -17,6 +17,7 @@ package spec
 import (
 	"encoding/json"
 
+	jsonv2 "github.com/go-json-experiment/json"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/go-openapi/swag"
 )
@@ -72,4 +73,18 @@ func (t *Tag) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	return json.Unmarshal(data, &t.VendorExtensible)
+}
+
+func (t *Tag) UnmarshalNextJSON(opts jsonv2.UnmarshalOptions, dec *jsonv2.Decoder) error {
+	var x struct {
+		Extensions
+		TagProps
+	}
+	if err := opts.UnmarshalNext(dec, &x); err != nil {
+		return err
+	}
+	x.Extensions.sanitize()
+	t.VendorExtensible.Extensions = x.Extensions
+	t.TagProps = x.TagProps
+	return nil
 }
