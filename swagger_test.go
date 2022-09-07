@@ -121,91 +121,94 @@ const specJSON = `{
 
 /*
 // assertEquivalent is currently unused
-func assertEquivalent(t testing.TB, actual, expected interface{}) bool {
-	if actual == nil || expected == nil || reflect.DeepEqual(actual, expected) {
-		return true
-	}
 
-	actualType := reflect.TypeOf(actual)
-	expectedType := reflect.TypeOf(expected)
-	if reflect.TypeOf(actual).ConvertibleTo(expectedType) {
-		expectedValue := reflect.ValueOf(expected)
-		if swag.IsZero(expectedValue) && swag.IsZero(reflect.ValueOf(actual)) {
+	func assertEquivalent(t testing.TB, actual, expected interface{}) bool {
+		if actual == nil || expected == nil || reflect.DeepEqual(actual, expected) {
 			return true
 		}
 
-		// Attempt comparison after type conversion
-		if reflect.DeepEqual(actual, expectedValue.Convert(actualType).Interface()) {
+		actualType := reflect.TypeOf(actual)
+		expectedType := reflect.TypeOf(expected)
+		if reflect.TypeOf(actual).ConvertibleTo(expectedType) {
+			expectedValue := reflect.ValueOf(expected)
+			if swag.IsZero(expectedValue) && swag.IsZero(reflect.ValueOf(actual)) {
+				return true
+			}
+
+			// Attempt comparison after type conversion
+			if reflect.DeepEqual(actual, expectedValue.Convert(actualType).Interface()) {
+				return true
+			}
+		}
+
+		// Last ditch effort
+		if fmt.Sprintf("%#v", expected) == fmt.Sprintf("%#v", actual) {
 			return true
 		}
+		errFmt := "Expected: '%T(%#v)'\nActual:   '%T(%#v)'\n(Should be equivalent)!"
+		return assert.Fail(t, errFmt, expected, expected, actual, actual)
 	}
-
-	// Last ditch effort
-	if fmt.Sprintf("%#v", expected) == fmt.Sprintf("%#v", actual) {
-		return true
-	}
-	errFmt := "Expected: '%T(%#v)'\nActual:   '%T(%#v)'\n(Should be equivalent)!"
-	return assert.Fail(t, errFmt, expected, expected, actual, actual)
-}
 
 // ShouldBeEquivalentTo is currently unused
-func ShouldBeEquivalentTo(actual interface{}, expecteds ...interface{}) string {
-	expected := expecteds[0]
-	if actual == nil || expected == nil {
-		return ""
-	}
 
-	if reflect.DeepEqual(expected, actual) {
-		return ""
-	}
-
-	actualType := reflect.TypeOf(actual)
-	expectedType := reflect.TypeOf(expected)
-	if reflect.TypeOf(actual).ConvertibleTo(expectedType) {
-		expectedValue := reflect.ValueOf(expected)
-		if swag.IsZero(expectedValue) && swag.IsZero(reflect.ValueOf(actual)) {
+	func ShouldBeEquivalentTo(actual interface{}, expecteds ...interface{}) string {
+		expected := expecteds[0]
+		if actual == nil || expected == nil {
 			return ""
 		}
 
-		// Attempt comparison after type conversion
-		if reflect.DeepEqual(actual, expectedValue.Convert(actualType).Interface()) {
+		if reflect.DeepEqual(expected, actual) {
 			return ""
 		}
-	}
 
-	// Last ditch effort
-	if fmt.Sprintf("%#v", expected) == fmt.Sprintf("%#v", actual) {
-		return ""
-	}
-	errFmt := "Expected: '%T(%#v)'\nActual:   '%T(%#v)'\n(Should be equivalent)!"
-	return fmt.Sprintf(errFmt, expected, expected, actual, actual)
+		actualType := reflect.TypeOf(actual)
+		expectedType := reflect.TypeOf(expected)
+		if reflect.TypeOf(actual).ConvertibleTo(expectedType) {
+			expectedValue := reflect.ValueOf(expected)
+			if swag.IsZero(expectedValue) && swag.IsZero(reflect.ValueOf(actual)) {
+				return ""
+			}
+
+			// Attempt comparison after type conversion
+			if reflect.DeepEqual(actual, expectedValue.Convert(actualType).Interface()) {
+				return ""
+			}
+		}
+
+		// Last ditch effort
+		if fmt.Sprintf("%#v", expected) == fmt.Sprintf("%#v", actual) {
+			return ""
+		}
+		errFmt := "Expected: '%T(%#v)'\nActual:   '%T(%#v)'\n(Should be equivalent)!"
+		return fmt.Sprintf(errFmt, expected, expected, actual, actual)
 
 }
 
 // assertSpecMaps is currently unused
-func assertSpecMaps(t testing.TB, actual, expected map[string]interface{}) bool {
-	res := true
-	if id, ok := expected["id"]; ok {
-		res = assert.Equal(t, id, actual["id"])
-	}
-	res = res && assert.Equal(t, expected["consumes"], actual["consumes"])
-	res = res && assert.Equal(t, expected["produces"], actual["produces"])
-	res = res && assert.Equal(t, expected["schemes"], actual["schemes"])
-	res = res && assert.Equal(t, expected["swagger"], actual["swagger"])
-	res = res && assert.Equal(t, expected["info"], actual["info"])
-	res = res && assert.Equal(t, expected["host"], actual["host"])
-	res = res && assert.Equal(t, expected["basePath"], actual["basePath"])
-	res = res && assert.Equal(t, expected["paths"], actual["paths"])
-	res = res && assert.Equal(t, expected["definitions"], actual["definitions"])
-	res = res && assert.Equal(t, expected["responses"], actual["responses"])
-	res = res && assert.Equal(t, expected["securityDefinitions"], actual["securityDefinitions"])
-	res = res && assert.Equal(t, expected["tags"], actual["tags"])
-	res = res && assert.Equal(t, expected["externalDocs"], actual["externalDocs"])
-	res = res && assert.Equal(t, expected["x-some-extension"], actual["x-some-extension"])
-	res = res && assert.Equal(t, expected["x-schemes"], actual["x-schemes"])
 
-	return res
-}
+	func assertSpecMaps(t testing.TB, actual, expected map[string]interface{}) bool {
+		res := true
+		if id, ok := expected["id"]; ok {
+			res = assert.Equal(t, id, actual["id"])
+		}
+		res = res && assert.Equal(t, expected["consumes"], actual["consumes"])
+		res = res && assert.Equal(t, expected["produces"], actual["produces"])
+		res = res && assert.Equal(t, expected["schemes"], actual["schemes"])
+		res = res && assert.Equal(t, expected["swagger"], actual["swagger"])
+		res = res && assert.Equal(t, expected["info"], actual["info"])
+		res = res && assert.Equal(t, expected["host"], actual["host"])
+		res = res && assert.Equal(t, expected["basePath"], actual["basePath"])
+		res = res && assert.Equal(t, expected["paths"], actual["paths"])
+		res = res && assert.Equal(t, expected["definitions"], actual["definitions"])
+		res = res && assert.Equal(t, expected["responses"], actual["responses"])
+		res = res && assert.Equal(t, expected["securityDefinitions"], actual["securityDefinitions"])
+		res = res && assert.Equal(t, expected["tags"], actual["tags"])
+		res = res && assert.Equal(t, expected["externalDocs"], actual["externalDocs"])
+		res = res && assert.Equal(t, expected["x-some-extension"], actual["x-some-extension"])
+		res = res && assert.Equal(t, expected["x-schemes"], actual["x-schemes"])
+
+		return res
+	}
 */
 func assertSpecs(t testing.TB, actual, expected Swagger) bool {
 	expected.Swagger = "2.0"
